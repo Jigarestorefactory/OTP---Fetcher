@@ -1,12 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 import time
-from datetime import datetime
 import csv
 import os
 
 def fetch_and_save_otp():
-    """Fetch OTP from website and save to CSV"""
+    """Fetch OTP from website and save to or update CSV"""
     url = "https://otp-generator-sm20.onrender.com/"
     
     try:
@@ -22,24 +21,13 @@ def fetch_and_save_otp():
             otp_div = soup.find('div', class_='otp')
             
             if otp_div:
-                # Get OTP and current time
+                # Get OTP
                 otp = otp_div.text.strip()
-                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                # Prepare data for CSV
-                data = [current_time, otp]
-                
-                # Save to CSV
-                file_exists = os.path.exists('otp_history.csv')
-                with open('otp_history.csv', 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    if not file_exists:
-                        # Write header if file is new
-                        writer.writerow(['Timestamp', 'OTP'])
-                    writer.writerow(data)
+                # Update or append to CSV
+                update_or_append_csv(otp)
                 
                 # Print to console
-                print(f"\nTime: {current_time}")
                 print(f"OTP: {otp}")
                 print("Saved to otp_history.csv")
                 print("-" * 30)
@@ -51,10 +39,35 @@ def fetch_and_save_otp():
     except Exception as e:
         print(f"Error occurred: {e}")
 
+def update_or_append_csv(otp):
+    """Update OTP in CSV (keep only the latest OTP)"""
+    file_path = 'otp_history.csv'
+    rows = []
+    file_exists = os.path.exists(file_path)
+    
+    # Read existing data if the file exists
+    if file_exists:
+        with open(file_path, 'r') as file:
+            reader = csv.reader(file)
+            rows = list(reader)
+    
+    # Separate header and data rows
+    header = rows[0] if rows else ['OTP']
+    data_rows = rows[1:] if len(rows) > 1 else []
+    
+    # Keep only the latest OTP
+    data_rows = [[otp]]  # Overwrite with the latest OTP
+    
+    # Write back to the CSV file
+    with open(file_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(header)  # Write the header
+        writer.writerows(data_rows)  # Write the latest OTP row
+
 def main():
     print("Starting OTP Fetcher...")
     print("Fetching OTP every 30 seconds. Press Ctrl+C to stop.")
-    print("OTPs will be saved to otp_history.csv")
+    print("Only the latest OTP will be saved to otp_history.csv")
     
     while True:
         try:
